@@ -177,7 +177,9 @@ class HttpErrorTests(unittest.TestCase):
     @mock.patch('usgs.api.requests.Session.post', MockPost(status_code=500, reason="Server Error"))
     @mock.patch('usgs.api.os.remove')
     @mock.patch('usgs.api.os.path.exists', return_value=True)
-    def test_logout_http_error(self, mock_exists, mock_remove):
+    @mock.patch('builtins.open', new_callable=mock.mock_open, read_data='{"apiKey": "dummy"}')
+
+    def test_logout_http_error(self, mock_open, mock_exists, mock_remove):
         with self.assertRaises(USGSError) as cm:
             api.logout()
         assert "HTTP error occurred during logout request" in str(cm.exception)
