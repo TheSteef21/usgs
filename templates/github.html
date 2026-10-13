@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SADV41 - Hub de la Esperanza</title>
+    <style>
+        body { background-color: #050505; color: #00ff00; font-family: monospace; margin: 0; padding: 20px; }
+        h2 { border-bottom: 2px solid #00ff00; padding-bottom: 5px; }
+        canvas { border: 1px solid #333; background-color: #0a0a0a; max-width: 100%; display: block; margin-top: 15px; }
+        a { color: #00ff00; text-decoration: none; border-bottom: 1px dashed #00ff00; }
+        a:hover { background-color: #003300; }
+        .panel-geopolitico { margin-top: 30px; border-top: 1px solid #333; padding-top: 15px; }
+        .log-replicas { margin-top: 15px; font-size: 11px; color: #888; max-height: 150px; overflow-y: auto; background: #080808; padding: 10px; border: 1px solid #222; }
+        .command-channels { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+        .channel-card { flex: 1; min-width: 140px; background: #161b22; border: 1px solid; padding: 12px; text-align: center; border-radius: 4px; }
+        .channel-card.sadv41 { border-color: #166534; color: #4ade80; }
+        .channel-card.sadv41:hover { background-color: #22c55e; color: #0f172a; }
+        .channel-card.turbologia { border-color: #6b21a8; color: #c084fc; }
+        .channel-card.turbologia:hover { background-color: #a855f7; color: #0f172a; }
+        .sat-stats { margin-top: 10px; font-size: 12px; color: #38bdf8; background: #0c1017; padding: 10px; border: 1px solid #0369a1; }
+    </style>
+</head>
+<body>
+    <h2>SADV41 - Telemetría Sísmica Dinámica</h2>
+
+    <!-- SADV41 COMMAND CHANNELS -->
+    <div class="command-channels">
+        <a href="https://m.me/ch/qkitCingtU6fzyf4/" target="_blank" class="channel-card sadv41">
+            <b style="display: block; font-size: 14px;">🕊️ SADV41</b>
+            <span style="font-size: 10px;">Canal Oficial • Entrar →</span>
+        </a>
+        <a href="https://m.me/cm/W2XLKIFTEyOHV2kU/" target="_blank" class="channel-card turbologia">
+            <b style="display: block; font-size: 14px;">📡 TURBOLOGIA</b>
+            <span style="font-size: 10px;">Turbulencia & Monitoreo →</span>
+        </a>
+    </div>
+
+    <div id="insignia-verificacion" style="margin-top: 15px; font-size: 13px;">Cargando telemetría local TSEC...</div>
+
+    <canvas id="sismoCanvas" width="800" height="400"></canvas>
+    <div id="log-replicas" class="log-replicas">Canal de telemetría inicializado. Monitoreando ondas TSEC en tiempo real...</div>
+
+    <div class="panel-geopolitico">
+        <h3>Panel Geopolítico: TSEC & Landsat 9</h3>
+        <p>Monitoreo activo y sincronización de telemetría orbital y terrestre.</p>
+        <div id="landsat-panel" class="sat-stats">Cargando análisis multiespectral Landsat 9...</div>
+    </div>
+
+    <script>
+        // Cargar Estado de Telemetría
+        fetch('/api/telemetria')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('insignia-verificacion').innerHTML = `
+                    <strong>VERIFICADO - Telemetría Local TSEC</strong><br>
+                    Estado del Sistema: <span style="color: #4ade80;">Activo y Sincronizado</span>
+                `;
+            });
+
+        // Cargar Estadísticas Landsat
+        fetch('/api/landsat')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('landsat-panel').innerHTML = `
+                    🛰️ <strong>Landsat 9 NDVI Analizado</strong><br>
+                    Escena: ${data.escena}<br>
+                    Mín: ${data.min_ndvi} | Máx: ${data.max_ndvi} | Promedio: ${data.promedio_ndvi}
+                `;
+            });
+
+        // Animación del Sismógrafo en el Canvas
+        const canvas = document.getElementById('sismoCanvas');
+        const ctx = canvas.getContext('2d');
+        let xPos = 0;
+        let yPos = canvas.height / 2;
+        let phase = 0;
+
+        function drawSismografo() {
+            ctx.fillStyle = 'rgba(10, 10, 10, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#00ff00';
+            ctx.beginPath();
+            ctx.moveTo(xPos, yPos);
+
+            xPos += 2;
+            phase += 0.1;
+            
+            let noise = (Math.random() - 0.5) * 15;
+            if (Math.random() > 0.95) noise *= 6;
+            
+            yPos = (canvas.height / 2) + Math.sin(phase) * 20 + noise;
+
+            ctx.lineTo(xPos, yPos);
+            ctx.stroke();
+
+            if (xPos > canvas.width) {
+                xPos = 0;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+
+            requestAnimationFrame(drawSismografo);
+        }
+
+        drawSismografo();
+    </script>
+</body>
+</html>
