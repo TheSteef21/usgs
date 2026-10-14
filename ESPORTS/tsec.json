@@ -1,0 +1,18 @@
+{
+  "system": {
+    "mission": "SADV41",
+    "module": "TSEC ESPORTS",
+    "protocol": "BERIÓN A217",
+    "version": "1.0.0",
+    "author": "STEVENDIOR OFICIAL"
+  },
+  "filters": {
+    "region": "Panamá + Centroamérica",
+    "bounding_box": {
+      "min_latitude": 6.5,
+      "max_latitude": 10.0,
+      "min_longitude": -83.5,
+      "max_longitude": -76.5
+    }
+  }
+}
