@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>USGS • SADV41 • TSEC ESPORTS</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    :root { --bg:#0a0a0a; --fg:#e8e8e8; --accent:#ff3b30; --sadv41:#00e5ff; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:var(--bg); color:var(--fg); font-family:Inter, system-ui, sans-serif; }
+    header { padding:18px 20px; border-bottom:1px solid #222; display:flex; justify-content:space-between; align-items:center; }
+    header h1 { font-size:14px; letter-spacing:0.2em; }
+    header h1 span { color:var(--sadv41); }
+    #map { height:55vh; width:100%; background:#111; }
+    .panel { padding:18px; display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .card { border:1px solid #222; padding:14px; border-radius:12px; background:#0f0f0f; }
+    .card h3 { font-size:11px; letter-spacing:0.15em; color:#888; margin-bottom:8px; }
+    .quake { padding:8px 0; border-bottom:1px solid #1a1a1a; display:flex; justify-content:space-between; align-items:center; font-size:12px; }
+    .quake:last-child { border:0; }
+    .mag { font-weight:900; padding:2px 6px; border-radius:4px; background:#1a1a1a; font-size:11px; }
+    .mag.crit { background:var(--accent); color:white; }
+    .mag.high { background:#ff9500; color:black; }
+    .mag.med { background:#ffcc00; color:black; }
+    
+    /* ACORDEÓN TSEC */
+    .tsec-panel { grid-column: 1 / -1; }
+    .tsec-accordion { background: #0c1017; border: 1px solid #0369a1; border-radius: 6px; margin-bottom: 8px; }
+    .tsec-accordion summary { background: #080d16; color: #38bdf8; padding: 10px 14px; cursor: pointer; font-size: 12px; font-weight: bold; }
+    .tsec-accordion summary:hover { background: #111827; }
+    .tsec-content { padding: 12px; font-size: 11px; color: #cbd5e1; line-height: 1.5; }
+    .tsec-content ul { margin: 5px 0 0 15px; }
+
+    .footer { padding:20px; text-align:center; font-size:11px; color:#666; letter-spacing:0.1em; border-top:1px solid #1a1a1a; }
+    @media(max-width:800px) { .panel { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>SADV41 // <span>TSEC ESPORTS</span> // SISMOS Y TERREMOTOS</h1>
+    <div style="font-size:10px; color:#888;">GITHUB PAGES • STATIC FEED</div>
+  </header>
+
+  <div id="map"></div>
+
+  <div class="panel">
+    <div class="card">
+      <h3>ÚLTIMOS SISMOS - GLOBAL (USGS LIVE)</h3>
+      <div id="list">Cargando...</div>
+    </div>
+
+    <div class="card">
+      <h3>PANAMÁ + CENTROAMÉRICA - FILTRO SADV41</h3>
+      <div id="list-pa">Cargando...</div>
+      <div style="margin-top:14px; font-size:10px; color:#555;">
+        Bounding: 6.5-10.0N, -83.5 - -76.5W • Protocolo BERIÓN A217<br>
+        Fuente: USGS API Live
+      </div>
+    </div>
+
+    <!-- PANEL GEOPOLÍTICO TSEC / LANDSAT 9 -->
+    <div class="card tsec-panel">
+      <h3 style="color:#38bdf8;">🛰 PANEL GEOPOLÍTICO: LANDSAT 9 (TSEC)</h3>
+      <p style="font-size: 11px; color: #888; margin-bottom: 12px;">Monitoreo Espectral y Cobertura de Superficie</p>
+
+      <details class="tsec-accordion">
+        <summary>🌏 Misión y Órbitas de Revisión <span>[+]</span></summary>
+        <div class="tsec-content">
+          <strong>Órbita Sincrónica Solar:</strong> Gira alrededor de la Tierra a ~705 km.<br>
+          <strong>Ciclo de Repetición:</strong> Cobertura global cada 16 días.
+        </div>
+      </details>
+
+      <details class="tsec-accordion">
+        <summary>📷 Instrumentos de Captura (OLI-2 & TIRS-2) <span>[+]</span></summary>
+        <div class="tsec-content">
+          <ul>
+            <li><strong>OLI-2:</strong> Captura luz reflejada en el espectro visible, NIR y SWIR.</li>
+            <li><strong>TIRS-2:</strong> Mide la emisión térmica de la superficie.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="tsec-accordion">
+        <summary>📊 Resolución Espacial y Espectral <span>[+]</span></summary>
+        <div class="tsec-content">
+          <ul>
+            <li><strong>Multiespectral:</strong> Píxeles de 30m.</li>
+            <li><strong>Pancromática:</strong> Detalle de alta resolución a 15m.</li>
+            <li><strong>Profundidad Radiométrica:</strong> Codificación de 14 bits.</li>
+          </ul>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="footer">STEVENDIOR OFICIAL • MISION SADV41 • thesteef21.github.io</div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const PANAMA_USGS_API = 'https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&minlatitude=6.5&maxlatitude=10.0&minlongitude=-83.5&maxlongitude=-76.5';
+    const GLOBAL_USGS_API = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
+
+    const map = L.map('map', { zoomControl: false }).setView([8.9, -80.2], 6);
+
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Base/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 16,
+      attribution: 'Esri, USGS, SADV41'
+    }).addTo(map);
+
+    function severity(m) {
+      if (m >= 7) return { cls: 'crit', label: 'CRÍTICO' };
+      if (m >= 6) return { cls: 'high', label: 'ALTO' };
+      if (m >= 5) return { cls: 'med', label: 'MEDIO' };
+      return { cls: '', label: 'VIGILANCIA' };
+    }
+
+    function isPanama(lat, lon) {
+      return lat >= 6.5 && lat <= 10.0 && lon >= -83.5 && lon <= -76.5;
+    }
+
+    async function load() {
+      const list = document.getElementById('list');
+      const listPA = document.getElementById('list-pa');
+      
+      try {
+        const rPa = await fetch(PANAMA_USGS_API);
+        const dataPa = await rPa.json();
+
+        const rGlobal = await fetch(GLOBAL_USGS_API);
+        const dataGlobal = await rGlobal.json();
+
+        list.innerHTML = '';
+        listPA.innerHTML = '';
+
+        map.eachLayer(l => {
+          if (l instanceof L.CircleMarker) map.removeLayer(l);
+        });
+
+        dataPa.features.forEach(f => {
+          const [lon, lat, depth] = f.geometry.coordinates;
+          const { mag, place, time } = f.properties;
+          const sev = severity(mag);
+          const date = new Date(time).toLocaleString('es-PA');
+          const color = sev.cls === 'crit' ? '#ff3b30' : (sev.cls === 'high' ? '#ff9500' : '#00e5ff');
+
+          L.circleMarker([lat, lon], {
+            radius: Math.max(4, mag * 2.5),
+            color: color,
+            fillColor: color,
+            fillOpacity: 0.7,
+            weight: 1
+          }).addTo(map).bindPopup(`<b>M${mag}</b> ${place}<br>${date}<br>Prof: ${depth}km`);
+
+          listPA.innerHTML += `
+            <div class="quake">
+              <div>
+                <div style="font-weight:bold; color:#eee;">${place}</div>
+                <div style="font-size:10px; color:#666;">${date} • Prof: ${depth}km</div>
+              </div>
+              <span class="mag ${sev.cls}">M ${mag ? mag.toFixed(1) : '0'}</span>
+            </div>
+          `;
+        });
+
+        dataGlobal.features.slice(0, 15).forEach(f => {
+          const [lon, lat] = f.geometry.coordinates;
+          const { mag, place, time } = f.properties;
+          const sev = severity(mag);
+          const date = new Date(time).toLocaleString('es-PA');
+
+          if (!isPanama(lat, lon)) {
+            L.circleMarker([lat, lon], {
+              radius: Math.max(3, mag * 2),
+              color: '#555',
+              fillColor: '#888',
+              fillOpacity: 0.4,
+              weight: 1
+            }).addTo(map).bindPopup(`<b>M${mag}</b> ${place}<br>${date}`);
+          }
+
+          list.innerHTML += `
+            <div class="quake">
+              <div>
+                <div style="font-weight:bold; color:#ccc;">${place}</div>
+                <div style="font-size:10px; color:#555;">${date}</div>
+              </div>
+              <span class="mag ${sev.cls}">M ${mag ? mag.toFixed(1) : '0'}</span>
+            </div>
+          `;
+        });
+
+      } catch(e) {
+        console.error(e);
+        listPA.innerHTML = '<div style="color:#ff3b30; font-size:11px;">Error al cargar datos en vivo</div>';
+      }
+    }
+
+    load();
+    setInterval(load, 60000);
+  </script>
+</body>
+</html>
