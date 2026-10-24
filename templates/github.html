@@ -1,110 +1,224 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SADV41 - Hub de la Esperanza</title>
-    <style>
-        body { background-color: #050505; color: #00ff00; font-family: monospace; margin: 0; padding: 20px; }
-        h2 { border-bottom: 2px solid #00ff00; padding-bottom: 5px; }
-        canvas { border: 1px solid #333; background-color: #0a0a0a; max-width: 100%; display: block; margin-top: 15px; }
-        a { color: #00ff00; text-decoration: none; border-bottom: 1px dashed #00ff00; }
-        a:hover { background-color: #003300; }
-        .panel-geopolitico { margin-top: 30px; border-top: 1px solid #333; padding-top: 15px; }
-        .log-replicas { margin-top: 15px; font-size: 11px; color: #888; max-height: 150px; overflow-y: auto; background: #080808; padding: 10px; border: 1px solid #222; }
-        .command-channels { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
-        .channel-card { flex: 1; min-width: 140px; background: #161b22; border: 1px solid; padding: 12px; text-align: center; border-radius: 4px; }
-        .channel-card.sadv41 { border-color: #166534; color: #4ade80; }
-        .channel-card.sadv41:hover { background-color: #22c55e; color: #0f172a; }
-        .channel-card.turbologia { border-color: #6b21a8; color: #c084fc; }
-        .channel-card.turbologia:hover { background-color: #a855f7; color: #0f172a; }
-        .sat-stats { margin-top: 10px; font-size: 12px; color: #38bdf8; background: #0c1017; padding: 10px; border: 1px solid #0369a1; }
-    </style>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>USGS • SADV41 • SISMOS Y TERREMOTOS</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    :root { --bg:#0a0a0a; --fg:#e8e8e8; --accent:#ff3b30; --sadv41:#00e5ff; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:var(--bg); color:var(--fg); font-family:Inter, system-ui, sans-serif; }
+    header { padding:18px 20px; border-bottom:1px solid #222; display:flex; justify-content:space-between; align-items:center; }
+    header h1 { font-size:14px; letter-spacing:0.2em; }
+    header h1 span { color:var(--sadv41); }
+    #map { height:55vh; width:100%; background:#111; }
+    .panel { padding:18px; display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .card { border:1px solid #222; padding:14px; border-radius:12px; background:#0f0f0f; }
+    .card h3 { font-size:11px; letter-spacing:0.15em; color:#888; margin-bottom:8px; }
+    .quake { padding:8px 0; border-bottom:1px solid #1a1a1a; display:flex; justify-content:space-between; align-items:center; font-size:12px; }
+    .quake:last-child { border:0; }
+    .mag { font-weight:900; padding:2px 6px; border-radius:4px; background:#1a1a1a; font-size:11px; }
+    .mag.crit { background:var(--accent); color:white; }
+    .mag.high { background:#ff9500; color:black; }
+    .mag.med { background:#ffcc00; color:black; }
+    
+    /* ACORDEÓN TSEC */
+    .tsec-panel { grid-column: 1 / -1; }
+    .tsec-accordion { background: #0c1017; border: 1px solid #0369a1; border-radius: 6px; margin-bottom: 8px; }
+    .tsec-accordion summary { background: #080d16; color: #38bdf8; padding: 10px 14px; cursor: pointer; font-size: 12px; font-weight: bold; }
+    .tsec-accordion summary:hover { background: #111827; }
+    .tsec-content { padding: 12px; font-size: 11px; color: #cbd5e1; line-height: 1.5; }
+    .tsec-content ul { margin: 5px 0 0 15px; }
+
+    .footer { padding:20px; text-align:center; font-size:11px; color:#666; letter-spacing:0.1em; border-top:1px solid #1a1a1a; }
+    @media(max-width:800px) { .panel { grid-template-columns:1fr; } }
+  </style>
 </head>
 <body>
-    <h2>SADV41 - Telemetría Sísmica Dinámica</h2>
 
-    <!-- SADV41 COMMAND CHANNELS -->
-    <div class="command-channels">
-        <a href="https://m.me/ch/qkitCingtU6fzyf4/" target="_blank" class="channel-card sadv41">
-            <b style="display: block; font-size: 14px;">🕊️ SADV41</b>
-            <span style="font-size: 10px;">Canal Oficial • Entrar →</span>
-        </a>
-        <a href="https://m.me/cm/W2XLKIFTEyOHV2kU/" target="_blank" class="channel-card turbologia">
-            <b style="display: block; font-size: 14px;">📡 TURBOLOGIA</b>
-            <span style="font-size: 10px;">Turbulencia & Monitoreo →</span>
-        </a>
+  <header>
+    <h1>SADV41 // <span>USGS LIVE</span> // SISMOS Y TERREMOTOS</h1>
+    <div style="font-size:10px; color:#888;">FEED: Live USGS + Local API</div>
+  </header>
+
+  <div id="map"></div>
+
+  <div class="panel">
+    <div class="card">
+      <h3>ÚLTIMOS SISMOS - GLOBAL (USGS)</h3>
+      <div id="list">Cargando...</div>
     </div>
 
-    <div id="insignia-verificacion" style="margin-top: 15px; font-size: 13px;">Cargando telemetría local TSEC...</div>
-
-    <canvas id="sismoCanvas" width="800" height="400"></canvas>
-    <div id="log-replicas" class="log-replicas">Canal de telemetría inicializado. Monitoreando ondas TSEC en tiempo real...</div>
-
-    <div class="panel-geopolitico">
-        <h3>Panel Geopolítico: TSEC & Landsat 9</h3>
-        <p>Monitoreo activo y sincronización de telemetría orbital y terrestre.</p>
-        <div id="landsat-panel" class="sat-stats">Cargando análisis multiespectral Landsat 9...</div>
+    <div class="card">
+      <h3>PANAMÁ + CENTROAMÉRICA - FILTRO SADV41</h3>
+      <div id="list-pa">Cargando...</div>
+      <div style="margin-top:14px; font-size:10px; color:#555;">
+        Bounding: 6.5-10.0N, -83.5 - -76.5W • Protocolo BERIÓN A217<br>
+        Fuente: earthquake.usgs.gov / /api/sismos
+      </div>
     </div>
 
-    <script>
-        // Cargar Estado de Telemetría
-        fetch('/api/telemetria')
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('insignia-verificacion').innerHTML = `
-                    <strong>VERIFICADO - Telemetría Local TSEC</strong><br>
-                    Estado del Sistema: <span style="color: #4ade80;">Activo y Sincronizado</span>
-                `;
-            });
+    <!-- PANEL GEOPOLÍTICO TSEC / LANDSAT 9 -->
+    <div class="card tsec-panel">
+      <h3 style="color:#38bdf8;">🛰 PANEL GEOPOLÍTICO: LANDSAT 9 (TSEC)</h3>
+      <p style="font-size: 11px; color: #888; margin-bottom: 12px;">Monitoreo Espectral y Cobertura de Superficie</p>
 
-        // Cargar Estadísticas Landsat
-        fetch('/api/landsat')
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('landsat-panel').innerHTML = `
-                    🛰️ <strong>Landsat 9 NDVI Analizado</strong><br>
-                    Escena: ${data.escena}<br>
-                    Mín: ${data.min_ndvi} | Máx: ${data.max_ndvi} | Promedio: ${data.promedio_ndvi}
-                `;
-            });
+      <details class="tsec-accordion">
+        <summary>🌏 Misión y Órbitas de Revisión <span>[+]</span></summary>
+        <div class="tsec-content">
+          <strong>Órbita Sincrónica Solar:</strong> Gira alrededor de la Tierra a ~705 km.<br>
+          <strong>Ciclo de Repetición:</strong> Cobertura global cada 16 días.
+        </div>
+      </details>
 
-        // Animación del Sismógrafo en el Canvas
-        const canvas = document.getElementById('sismoCanvas');
-        const ctx = canvas.getContext('2d');
-        let xPos = 0;
-        let yPos = canvas.height / 2;
-        let phase = 0;
+      <details class="tsec-accordion">
+        <summary>📷 Instrumentos de Captura (OLI-2 & TIRS-2) <span>[+]</span></summary>
+        <div class="tsec-content">
+          <ul>
+            <li><strong>OLI-2:</strong> Captura luz reflejada en el espectro visible, NIR y SWIR.</li>
+            <li><strong>TIRS-2:</strong> Mide la emisión térmica de la superficie.</li>
+          </ul>
+        </div>
+      </details>
 
-        function drawSismografo() {
-            ctx.fillStyle = 'rgba(10, 10, 10, 0.1)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+      <details class="tsec-accordion">
+        <summary>📊 Resolución Espacial y Espectral <span>[+]</span></summary>
+        <div class="tsec-content">
+          <ul>
+            <li><strong>Multiespectral:</strong> Píxeles de 30m.</li>
+            <li><strong>Pancromática:</strong> Detalle de alta resolución a 15m.</li>
+            <li><strong>Profundidad Radiométrica:</strong> Codificación de 14 bits.</li>
+          </ul>
+        </div>
+      </details>
 
-            ctx.lineWidth = 1.5;
-            ctx.strokeStyle = '#00ff00';
-            ctx.beginPath();
-            ctx.moveTo(xPos, yPos);
+      <details class="tsec-accordion">
+        <summary>📡 Integración con el Hub SADV41 <span>[+]</span></summary>
+        <div class="tsec-content">
+          Los datos crudos son procesados localmente en entornos ligeros (Termux / Flask).
+        </div>
+      </details>
+    </div>
+  </div>
 
-            xPos += 2;
-            phase += 0.1;
-            
-            let noise = (Math.random() - 0.5) * 15;
-            if (Math.random() > 0.95) noise *= 6;
-            
-            yPos = (canvas.height / 2) + Math.sin(phase) * 20 + noise;
+  <div class="footer">STEVENDIOR OFICIAL • MISION SADV41 • thesteef21.github.io</div>
 
-            ctx.lineTo(xPos, yPos);
-            ctx.stroke();
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const FEED = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
+    const map = L.map('map', { zoomControl: false }).setView([8.9, -80.2], 6);
 
-            if (xPos > canvas.width) {
-                xPos = 0;
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-            }
+    // Mapa oscuro gratuito Esri Dark Canvas sin restricción de API Key
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Base/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 16,
+      attribution: 'Esri, USGS, SADV41'
+    }).addTo(map);
 
-            requestAnimationFrame(drawSismografo);
+    function severity(m) {
+      if (m >= 7) return { cls: 'crit', label: 'CRÍTICO' };
+      if (m >= 6) return { cls: 'high', label: 'ALTO' };
+      if (m >= 5) return { cls: 'med', label: 'MEDIO' };
+      return { cls: '', label: 'VIGILANCIA' };
+    }
+
+    function isPanama(lat, lon) {
+      return lat >= 6.5 && lat <= 10.0 && lon >= -83.5 && lon <= -76.5;
+    }
+
+    async function load() {
+      const list = document.getElementById('list');
+      const listPA = document.getElementById('list-pa');
+      
+      try {
+        let paQuakes = [];
+        try {
+          const rLocal = await fetch('/api/sismos');
+          if (rLocal.ok) {
+            const dLocal = await rLocal.json();
+            if (dLocal.sismos) paQuakes = dLocal.sismos;
+          }
+        } catch(e) {}
+
+        const r = await fetch(FEED);
+        const data = await r.json();
+
+        list.innerHTML = '';
+        listPA.innerHTML = '';
+
+        map.eachLayer(l => {
+          if (l instanceof L.CircleMarker) map.removeLayer(l);
+        });
+
+        if (paQuakes.length > 0) {
+          paQuakes.forEach(sismo => {
+            const mag = sismo.mag ?? 0;
+            const [lon, lat, prof] = sismo.coords;
+            const sev = severity(mag);
+            const date = new Date(sismo.tiempo_ms).toLocaleString('es-PA');
+
+            const color = sev.cls === 'crit' ? '#ff3b30' : (sev.cls === 'high' ? '#ff9500' : '#00e5ff');
+            L.circleMarker([lat, lon], {
+              radius: Math.max(4, mag * 2.5),
+              color: color,
+              fillColor: color,
+              fillOpacity: 0.7,
+              weight: 1
+            }).addTo(map).bindPopup(`<b>M${mag}</b> ${sismo.lugar}<br>${date}<br>Prof: ${prof}km`);
+
+            listPA.innerHTML += `
+              <div class="quake">
+                <div>
+                  <div style="font-weight:bold; color:#eee;">${sismo.lugar}</div>
+                  <div style="font-size:10px; color:#666;">${date} • Prof: ${prof}km</div>
+                </div>
+                <span class="mag ${sev.cls}">M ${mag.toFixed(1)}</span>
+              </div>
+            `;
+          });
         }
 
-        drawSismografo();
-    </script>
+        const sortedGlobal = data.features.sort((a,b) => b.properties.time - a.properties.time);
+        sortedGlobal.slice(0, 15).forEach(f => {
+          const [lon, lat, depth] = f.geometry.coordinates;
+          const { mag, place, time } = f.properties;
+          const sev = severity(mag);
+          const date = new Date(time).toLocaleString('es-PA');
+
+          if (!isPanama(lat, lon)) {
+            L.circleMarker([lat, lon], {
+              radius: Math.max(3, mag * 2),
+              color: '#555',
+              fillColor: '#888',
+              fillOpacity: 0.4,
+              weight: 1
+            }).addTo(map).bindPopup(`<b>M${mag}</b> ${place}<br>${date}`);
+          }
+
+          list.innerHTML += `
+            <div class="quake">
+              <div>
+                <div style="font-weight:bold; color:#ccc;">${place}</div>
+                <div style="font-size:10px; color:#555;">${date}</div>
+              </div>
+              <span class="mag ${sev.cls}">M ${mag ? mag.toFixed(1) : '0'}</span>
+            </div>
+          `;
+        });
+
+        if (!paQuakes.length) {
+          listPA.innerHTML = '<div style="color:#666; font-size:11px;">Ejecuta python get_sismos.py para actualizar el filtro local de Panamá.</div>';
+        }
+
+      } catch(e) {
+        console.error(e);
+        list.innerHTML = '<div style="color:#ff3b30; font-size:11px;">Error de conexión</div>';
+      }
+    }
+
+    load();
+    setInterval(load, 60000);
+  </script>
+<script src="https://thesteef21.github.io/SADV41/Agent/SAT/GOB/satv41-widget.js" defer></script>
 </body>
 </html>

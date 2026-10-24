@@ -24,7 +24,7 @@
 </style>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>USGS • SADV41 • SISMOS Y TERREMOTOS</title>
+<title>USGS • SADV41 • SISMOS Y TERREMOTOS (ESTELA 2.5+)</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
   :root { --bg:#0a0a0a; --fg:#e8e8e8; --accent:#ff3b30; --sadv41:#00e5ff; }
@@ -37,16 +37,22 @@
   .panel{padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .card{border:1px solid #222;padding:14px;border-radius:12px;background:#0f0f0f}
   .card h3{font-size:11px;letter-spacing:0.15em;color:#888;margin-bottom:8px}
-  .quake{padding:10px 0;border-bottom:1px solid #1a1a1a;display:flex;justify-content:space-between}
-  .quake:last-child{border:0}
+  
+  /* ESTILOS DE LISTA SÍSMICA INTERACTIVA */
+  .quake{padding:12px 10px; border-bottom:1px solid #1a1a1a; display:flex; justify-content:space-between; cursor:pointer; transition: background 0.2s ease, transform 0.1s ease; border-radius: 6px;}
+  .quake:hover{background:#111827; border-color: #38bdf8;}
+  .quake:active{transform: scale(0.99);}
+  .quake:last-child{border-bottom:0}
+  
   .mag{font-weight:900;padding:4px 8px;border-radius:6px;background:#1a1a1a}
   .mag.crit{background:var(--accent);color:white}
   .mag.high{background:#ff9500;color:black}
   .mag.med{background:#ffcc00;color:black}
+  .mag.low{background:#4ade80;color:black}
   .footer{padding:20px;text-align:center;font-size:11px;color:#666;letter-spacing:0.1em}
   @media(max-width:800px){.panel{grid-template-columns:1fr}}
 
-  /* ESTILOS ACORDEÓN TSEC (Flash-lite) */
+  /* ESTILOS ACORDEÓN TSEC */
   .tsec-accordion { background: #0c1017; border: 1px solid #0369a1; border-radius: 6px; margin-bottom: 10px; font-family: monospace; overflow: hidden; }
   .tsec-accordion summary { background: #080d16; color: #38bdf8; padding: 12px 15px; cursor: pointer; font-weight: bold; font-size: 12px; outline: none; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid transparent; transition: background 0.2s; }
   .tsec-accordion summary:hover { background: #111827; }
@@ -55,12 +61,16 @@
   .tsec-content ul { margin: 5px 0 0 15px; padding: 0; }
   .tsec-content li { margin-bottom: 5px; }
   .tsec-panel { padding: 0 18px 18px 18px; }
+  
+  /* Ajustes popup de Leaflet para modo oscuro */
+  .leaflet-popup-content-wrapper { background: #0f0f0f; color: #e8e8e8; border: 1px solid #333; }
+  .leaflet-popup-tip { background: #0f0f0f; }
 </style>
 </head>
 <body>
 <header>
   <h1>SADV41 // <span>USGS LIVE</span> // SISMOSYTERREMOTOS</h1>
-  <div style="font-size:10px;color:#888">FEED: all_day.geojson • AUTO REFRESH 60s</div>
+  <div style="font-size:10px;color:#888">FEED: all_day.geojson • AUTO REFRESH 60s • UMBRAL: M2.5+</div>
 </header>
 <div id="map"></div>
 <div class="panel">
@@ -69,11 +79,11 @@
     <div id="list">Cargando...</div>
   </div>
   <div class="card">
-    <h3>PANAMÁ + CENTROAMÉRICA - FILTRO SADV41</h3>
+    <h3>PANAMÁ + CENTROAMÉRICA - FILTRO SADV41 (M2.5+)</h3>
     <div id="list-pa">Cargando...</div>
     <div style="margin-top:14px;font-size:10px;color:#555">
       Bounding: 7.0-9.8N, -83 - -77W • Protocolo BERIÓN A217<br/>
-      Fuente: earthquake.usgs.gov • No almacena, solo visualiza.
+      Haga clic en cualquier sismo para extraer sus coordenadas exactas en Google Maps.
     </div>
   </div>
 </div>
@@ -125,12 +135,13 @@
 <script>
 const FEED = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
 const map = L.map('map',{zoomControl:false}).setView([8.9,-80.2],5);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© USGS © CARTO'}).addTo(map);
+L.tileLayer('https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=cb1_4ne6_1_3c19f375f3946685db2cfede',{attribution:'© USGS © CARTO'}).addTo(map);
 
 function severity(m){
  if(m>=7) return {cls:'crit',label:'CRITICO'};
  if(m>=6) return {cls:'high',label:'ALTO'};
- if(m>=5) return {cls:'med',label:'MEDIO'};
+ if(m>=4.5) return {cls:'med',label:'MEDIO'};
+ if(m>=2.5) return {cls:'low',label:'ESTELA (2.5+)'};
  return {cls:'',label:'VIGILANCIA'};
 }
 function isPanama(lat,lon){
@@ -146,36 +157,72 @@ async function load(){
 
   const panamaQuakes = [];
 
-  data.features.sort((a,b)=>b.properties.mag-a.properties.mag).forEach(f=>{
+  // Filtrar todos los sismos M2.5+
+  const filteredFeatures = data.features
+    .filter(f => f.properties.mag >= 2.5)
+    .sort((a,b) => b.properties.mag - a.properties.mag);
+
+  filteredFeatures.forEach(f=>{
     const [lon,lat,depth] = f.geometry.coordinates;
     const {mag,place,time} = f.properties;
     const sev = severity(mag);
     const date = new Date(time).toLocaleString('es-PA');
+    const gmapsURL = `https://maps.google.com/?q=${lat},${lon}&ll=${lat},${lon}&z=9`;
     
+    // Popup interactivo con Google Maps
     const marker = L.circleMarker([lat,lon],{
       radius: Math.max(4, mag*2.5),
-      color: sev.cls==='crit' ? '#ff3b30' : sev.cls==='high' ? '#ff9500' : '#00e5ff',
+      color: sev.cls==='crit' ? '#ff3b30' : sev.cls==='high' ? '#ff9500' : sev.cls==='med' ? '#ffcc00' : '#4ade80',
       weight:2, fillOpacity:0.6
-    }).addTo(map).bindPopup(`<b>M${mag} ${place}</b><br/>${date}<br/>Prof: ${depth}km<br/>${sev.label}`);
+    }).addTo(map).bindPopup(
+      `<b>M${mag} ${place}</b><br/>${date}<br/>Prof: ${depth}km<br/>${sev.label}<br/><br/>
+      <a href="${gmapsURL}" target="_blank" style="color:#38bdf8; text-decoration:none; font-weight:bold;">📍 Explorar en Google Maps</a>`
+    );
 
-    const row = `<div class="quake"><div><span class="mag ${sev.cls}">M${mag}</span> ${place}<br/><span style="font-size:10px;color:#666">${date} • ${depth}km</span></div><div style="font-size:10px;color:#888">${sev.label}</div></div>`;
+    // Fila interactiva para la tabla de Panamá
+    const rowPA = `
+      <div class="quake" onclick="window.open('${gmapsURL}', '_blank')" title="Mapear Coordenadas">
+        <div>
+          <span class="mag ${sev.cls}">M${mag}</span> ${place}<br/>
+          <span style="font-size:10px;color:#666">${date} • ${depth}km</span>
+        </div>
+        <div style="font-size:10px;color:#888;text-align:right;">
+          ${sev.label}<br/>
+          <span style="color:#38bdf8;font-size:12px;font-weight:bold;">🗺️ G-MAPS</span>
+        </div>
+      </div>`;
 
-    if(isPanama(lat,lon)) { panamaQuakes.push(f); listPA.innerHTML+=row; }
+    if(isPanama(lat,lon)) { panamaQuakes.push(f); listPA.innerHTML+=rowPA; }
   });
 
   // Global list (top 20)
-  data.features.slice(0,20).forEach(f=>{
+  filteredFeatures.slice(0,20).forEach(f=>{
+    const [lon,lat,depth] = f.geometry.coordinates;
     const {mag,place,time} = f.properties;
     const sev = severity(mag);
     const date = new Date(time).toLocaleString('es-PA');
-    list.innerHTML+= `<div class="quake"><div><span class="mag ${sev.cls}">M${mag}</span> ${place}<br/><span style="font-size:10px;color:#666">${date}</span></div><div style="font-size:10px">${sev.label}</div></div>`;
+    const gmapsURL = `https://maps.google.com/?q=${lat},${lon}&ll=${lat},${lon}&z=9`;
+    
+    // Fila interactiva para la tabla Global
+    list.innerHTML+= `
+      <div class="quake" onclick="window.open('${gmapsURL}', '_blank')" title="Mapear Coordenadas">
+        <div>
+          <span class="mag ${sev.cls}">M${mag}</span> ${place}<br/>
+          <span style="font-size:10px;color:#666">${date} • ${depth}km</span>
+        </div>
+        <div style="font-size:10px;color:#888;text-align:right;">
+          ${sev.label}<br/>
+          <span style="color:#38bdf8;font-size:12px;font-weight:bold;">🗺️ G-MAPS</span>
+        </div>
+      </div>`;
   });
 
-  if(panamaQuakes.length===0) listPA.innerHTML='<div style="color:#666;padding:20px 0">Sin sismos en bounding Panamá últimas 24h. Vigilancia activa SADV41.</div>';
+  if(panamaQuakes.length===0) listPA.innerHTML='<div style="color:#666;padding:20px 0">Sin sismos M2.5+ en bounding Panamá últimas 24h. Vigilancia activa SADV41.</div>';
 
  }catch(e){ console.error(e); document.getElementById('list').innerHTML='Error cargando USGS'; }
 }
 load(); setInterval(load,60000);
 </script>
+<script src="https://thesteef21.github.io/SADV41/Agent/SAT/GOB/satv41-widget.js" defer></script>
 </body>
 </html>

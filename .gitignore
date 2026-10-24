@@ -62,3 +62,25 @@ target/
 
 # VSCode
 .vscode
+extracted_landsat/
+*.tif
+*.tar.gz
+*.zip
+venv/
+.venv/
+landsat_extracted/
+*.TIF
+*.tif
+*.tar
+*.zip
+*.gz
+venv/
+.venv/
+landsat_extracted/
+*.TIF
+*.tif
+*.tar
+*.zip
+*.gz
+venv/
+.venv/
