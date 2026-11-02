@@ -1,5 +1,5 @@
 const PANAMA_USGS_API = 'https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&minlatitude=6.5&maxlatitude=10.0&minlongitude=-83.5&maxlongitude=-76.5';
-const GLOBAL_USGS_API = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
+const GLOBAL_USGS_API = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson';
 
 // Inicializar Mapa Leaflet
 const map = L.map('map', { zoomControl: false }).setView([8.9, -80.2], 6);

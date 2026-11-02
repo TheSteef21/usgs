@@ -6,12 +6,23 @@ app = Flask(__name__)
 
 CANALES = {
     "SADV41": "https://m.me/ch/qkitCingtU6fzyf4/",
-    "TURBOLOGIA": "https://m.me/cm/W2XLKIFTEyOHV2kU/"
+    "TURBOLOGIA": "https://m.me/cm/w2XLKIFTEyOHv2kU/"
 }
 
 @app.route('/')
 def home():
-    return render_template('github.html', canales=CANALES)
+    return render_template('index.html', canales=CANALES)
+
+@app.route('/api/sismos')
+def api_sismos():
+    if not os.path.exists("sismos_panama.json"):
+        return jsonify({"status": "warning", "message": "Ejecuta get_sismos.py primero", "sismos": []}), 404
+    try:
+        with open("sismos_panama.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return jsonify({"status": "success", "total": len(data), "sismos": data})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e), "sismos": []}), 500
 
 @app.route('/api/telemetria')
 def telemetria_local():
@@ -46,7 +57,7 @@ def landsat_local():
 
 @app.route('/alert/<msg>')
 def alert_canales(msg):
-    print(f"🎚️ ALERTA PARA {list(CANALES.keys())}: {msg}")
+    print(f"ALERTA PARA {list(CANALES.keys())}: {msg}")
     return f"Notificación enviada a SADV41 y TURBOLOGIA: {msg}"
 
 if __name__ == '__main__':
